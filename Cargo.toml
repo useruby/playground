@@ -1,0 +1,18 @@
+[package]
+name = "playground"
+version = "0.1.0"
+authors = ["Alexey Artamonov <i@useruby.com>"]
+
+[dependencies]
+hyper = "0.6"
+regex = "0.1"
+docopt = "0.6"
+
+[lib]
+name = "playground"
+path = "src/playground/lib.rs"
+
+[[bin]]
+name = "playground"
+test = false
+doc = false
