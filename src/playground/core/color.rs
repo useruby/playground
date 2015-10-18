@@ -1,13 +1,5 @@
-extern crate hyper;
-extern crate regex;
-
 use std::fmt;
-use std::io::Read;
-
-use self::hyper::Client;
-use self::hyper::header::Connection;
-
-use self::regex::Regex;
+use core::storage::ColorRemoteStorage;
 
 #[derive(Debug)]
 pub struct Color {
@@ -18,13 +10,13 @@ pub struct Color {
 }
 
 impl Color {
-    pub fn new(name: &str) -> Color {
+    pub fn new(name: &str, remote_storage: &ColorRemoteStorage) -> Color {
         let (r, g, b) = match name {
             "red" => (255, 0, 0),
             "green" => (0, 0, 255),
             "blue" => (0, 255, 0),
             "purple" => (128, 0, 128),
-            _ => Color::rgb_from_remote(name)
+            _ => (*remote_storage).get(name)
         };
 
         Color{name: name.to_string(), r: r, g: g, b: b}       
@@ -37,30 +29,6 @@ impl Color {
     fn hex(&self) -> String {
         format!("#{:02X}{:02X}{:02X}", self.r, self.g, self.b)
     }
-
-    fn rgb_from_remote(name: &str) -> (u8, u8, u8) {
-        // Create a client.
-        let client = Client::new();
-
-        // Creating an outgoing request.
-        let mut res = client.get(&format!("http://rgb.to/{}", name))
-            .header(Connection::close())
-            .send().unwrap();
-
-        // Read the Response.
-        let mut body = String::new();
-        res.read_to_string(&mut body).unwrap();
-
-        let re = Regex::new("rgb\\((\\d+), (\\d+), (\\d+)\\)").unwrap();
-
-        let caps = re.captures(&body).unwrap();
-
-        (
-            caps.at(1).unwrap().parse::<u8>().unwrap(), 
-            caps.at(2).unwrap().parse::<u8>().unwrap(), 
-            caps.at(3).unwrap().parse::<u8>().unwrap()
-        )
-    }
 }
 
 impl fmt::Display for Color {
@@ -70,21 +38,26 @@ impl fmt::Display for Color {
 }
 
 #[cfg(test)]
-pub mod test {
+mod test {
     use core::color::Color;
+    use core::storage::ColorRemoteStorage;
+
+    fn create_color(color_name: &str) -> Color{
+        Color::new(color_name, &ColorRemoteStorage::new())
+    }
 
     #[test]
     fn red_color_should_has_rgb_255_0_0() {
-        assert_eq!(Color::new("red").rgb(), (255, 0, 0))
+        assert_eq!(create_color("red").rgb(), (255, 0, 0))
     }
 
     #[test]
     fn red_color_should_has_hex_ff0000() {
-        assert_eq!(Color::new("red").hex(), "#FF0000")
+        assert_eq!(create_color("red").hex(), "#FF0000")
     }
 
     #[test]
     fn coral_color_should_has_rgb_255_127_80(){
-        assert_eq!(Color::new("coral").rgb(), (255, 127, 80))
+        assert_eq!(create_color("coral").rgb(), (255, 127, 80))
     }
 }

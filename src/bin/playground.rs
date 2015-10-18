@@ -2,6 +2,7 @@ extern crate playground;
 extern crate docopt;
 
 use playground::core::color::Color;
+use playground::core::storage::ColorRemoteStorage;
 use docopt::Docopt;
 
 const USAGE: &'static str = "
@@ -18,7 +19,12 @@ fn main() {
 
     let colors = args.get_vec("<color_name>");
    
-    let colors: Vec<_> = colors.into_iter().map(|color| Color::new(color)).collect();
+    let color_remote_storage = ColorRemoteStorage::new();
+
+    let colors: Vec<_> = colors
+            .iter()
+            .map(|color| Color::new(color, &color_remote_storage))
+            .collect();
 
     for color in colors {
         println!("{}", color)
