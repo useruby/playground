@@ -1,6 +1,10 @@
 extern crate playground;
 extern crate docopt;
 
+use std::thread;
+use std::thread::JoinHandle;
+use std::sync::{Arc, Mutex};
+
 use playground::core::color::Color;
 use playground::core::storage::ColorRemoteStorage;
 use docopt::Docopt;
@@ -17,16 +21,26 @@ fn main() {
                         .and_then(|dopt| dopt.parse())
                         .unwrap_or_else(|e| e.exit());
 
-    let colors = args.get_vec("<color_name>");
-   
-    let color_remote_storage = ColorRemoteStorage::new();
+    let color_remote_storage = Arc::new(ColorRemoteStorage::new());
 
-    let colors: Vec<_> = colors
-            .iter()
-            .map(|color| Color::new(color, &color_remote_storage))
-            .collect();
+    let colors: Arc<Mutex<Vec<Color>>> = Arc::new(Mutex::new(Vec::new()));
 
-    for color in colors {
+    for thread in args.get_vec("<color_name>").iter().map(|color_name| {
+        let shared_colors = colors.clone();
+        let color_remote_storage = color_remote_storage.clone();
+        let color_name = color_name.to_string();
+        
+        thread::spawn( move || {
+            let color = Color::new(&color_name, &color_remote_storage);
+
+            let mut shared_colors = shared_colors.lock().unwrap();
+            shared_colors.push(color)
+        })
+    }).collect::<Vec<JoinHandle<_>>>(){
+        thread.join().unwrap();
+    }
+
+    for color in colors.lock().unwrap().iter() {
         println!("{}", color)
     }
 }
